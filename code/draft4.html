@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
+    <title>Image Collage with Leaflet Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow-x: auto;
+        }
+        #collage {
+            display: flex;
+            width: 200%; /* Adjust width as needed for all images */
+            height: 100vh;
+            position: relative;
+        }
+        .image-item {
+            width: 18%; /* Adjust the size of the images */
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+        }
+        #mapModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        #map {
+            width: 80%;
+            height: 80%;
+        }
+        .close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 30px;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="collage"></div>
+
+    <div id="mapModal">
+        <span class="close" onclick="closeMap()">×</span>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+        const images = [
+        { src: 'https://previews.dropbox.com/p/thumb/ACeXlLo-YWyyr5IUPbiap95Oxxt9McvXytwXqxrOqlsB4Wr98yxajuaz4N0BiCtMTcb1qSb3_wA4qAQ9XNWBs4AX2qZH9rB6Q2n-lS8nYC2SvudcmkhS4Z-Sq_JsVVVBnkYSXZABkBOyF7K8NR0_JaYK6zGyt11_2NgyqdTNnL-20r4oec3-KmW1dYIUrt1fhJnWMfqw4xa2LXyZpc-wCZ8z25ly9viZFwatv6SLtEAlvAlBdwsgZ4UTEHe-EFwxauG98VK1UkIjjFjEgJDtfWyNEXZUBCOYKoKjWw6UpZoHSg/p.png', lat: 51.505, lng: -0.09, width: '20%', height: '30%', top: '10%', left: '5%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACdTvsLGzBLJm_giFOnw0yOMhaPPKkmmMlX8i5WV55Jd-TWuNO421tdSmGerZhT8ml3863fUV7YLqgxBUO3rnfj_2y7oskdnym-yzY83mkECRZbs2LuuI35KTfzLIAT8mDumhUPuJ0eBcJcNm5dEJvx57sgvInwYG_TxZZ1s-3Gk2RHdB0bv5w8rasIxka7v137xCEJpJ4NmJ0kEHNGuaHytAagfJ2W-v35Ys7RkeCAHZ8dHPMm1vSOz-MUKPFvFe-WgDTF-hE8_npfvYoXonNieHRWG7mdepxXCgLcpL_LBzg/p.png', lat: 40.7128, lng: -74.006, width: '25%', height: '35%', top: '20%', left: '30%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACfPChKx-ZTKMh4pakvHMLvaZ5eLu0qzuDDUx6-ShiO2iuBl_VWW4ienfj6_sz18GfSsXBKw9areeR1OK3-M7QSOEZ8XHg0NgiVqXmpKeSjMJauvbkLudat3XSURBFMitl0VsoZo3FVnLKqi2Ehho9pDyrdOE0atl6XJVvDNLhXrn_bt7kQyNyRaX9RcFJr1RqPAGh41APN_nAmYoeKj9QA7r1NpbRzgmY2lyoFsDC5zkoAaXgignN2QijZL1FGuDY6YUNslKKMh5chT8Axhkzaa55Ljk3FyKEn1Ir14MSvEfg/p.png', lat: 48.8566, lng: 2.3522, width: '30%', height: '25%', top: '60%', left: '10%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACe03e8t3HOuNy_ozalpnpUVoI2BQxXP5G3wRAC9AGQ4VuBRdcUe9cb9cF-gIi84vO70_YuE309lZGguHnXmVZrYeHS4PA5pt-KPjIAjRy6NUAzgGhdt9QK9iSpYLKPz6Sue1QmUaqIwKUJBmKkQaKCI5Lwo9himIcMYkNJHAroljG-vCAM1zKFSoUiHybarqGeElIT4Bad7M_mezYsd0RVAvaLPr508vCQCe2f9O7XChqH1oMz7G6xU9x46jBqN8IbfwearlDLXamPL6fP2tbYTWNKep-zkm4sJJ8UbyOiKQCAsR6hADwCoaMA6sNeCDsM/p.png', lat: 35.6762, lng: 139.6503, width: '15%', height: '25%', top: '5%', left: '60%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACd3rLV5JCbYV2bv-Q8NzXMJCQ2xJ2JwhYchBOAsSDeLdy1nds2QWA9a9awfAXIYT8Fpwb2SmBrsRiB6j0vGiSkmHWjSohs65giB-k3BE3SuPhuJUyZcwkfTMyYklyTdlNYnVFtATlX3EygYA7BBdoZLMc_dgzMfbpZc7nB3gk-c8hD3fk-OekbmCsIdYja2jyLRmme05BT3_WY6nJZfp0mnW_3RBa1rfsAxYwTfYb8HtSPRcODrHsHOFOvsVAMfrjXjWjwVgBh19x1cxNq2EYWbuCi_Sue30esUAvHJd2S9qw/p.png', lat: -33.8688, lng: 151.2093, width: '18%', height: '28%', top: '35%', left: '15%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACfbK4tu-MvNOyXMxKwSmmck4olHdQQuWMa6JABvxkHT7vG8ebcdMGgu3waWtineyqbiY6nzsRk5VE1fzsygi4gV550uhnb0JcEIo9nJBXOMUt15cuT5cJsUJarOt7DU5jGXbBtioODVhfPUHQmc0MDF8er0aGCzz5Re7JcbbvFDIGZ6YsYYDXdW97fLl12U7acdF9I9c9J7CT1l53AxzChMDo7aXcpOXj0zK2X81BAk44zT83GbAu6oHn992n0KL6YBpsppC-buy1NRAej7rX1-SzAyx2tpdQlLz_6DrA2KiQ/p.png', lat: 34.0522, lng: -118.2437, width: '10%', height: '10%', top: '50%', left: '70%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACevMiiJhLg8elwImXAnd-p0cHsyhekyZUmUfCSfxvS6FMGUj8aal1pIdbJ_CL7okmpPAMPjfWYfR38IAwinak1ALFIaYvhqR1vMgPa4ApEERXGspRz4e_-kJ9oWdh9FGrYDkldfarWDsDI6IAB88K2OqDJuS-PtOFDIGFasyOfeUwgn1QPjYE84BDPuOaaBrkYMVjJ9XgVKkdjelRUxg6BS0pTNQhf-xBuue4qqzLOd_-Kj5gY9rCD7u94zMWtowQmzZjzEEpt7wNRUznTZsLxNTi7FFIr83tqHYeoDHfZcFw/p.png', lat: 37.7749, lng: -122.4194, width: '12%', height: '18%', top: '70%', left: '40%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACeMPBxPqQFLCCo0z-C_SNkMczp67I6dze6XP75_TpOB9Mvio3NkR4ZmhsK0_U_By7AwS8mKvWavRaFt9DcU-xm81Q8bH_qXmqRyuOMzRPJOFxw0fcVpVyLhc2ArU0JSCFdcsfsjQtS54ejiGVegkhlG9rM5bW_i7OUt7_aJVJHV7C6qpWYlrh9sJ8ucxsjRapDQJaQuClgkyJH1aLD9E5cnhD7PTrVcdbtUetunljVHPOImAscCj4LKhm3DKCW10uxReLbfs_wbCBUQnMPo1va-gsJlct_N7EvK-BRSvgZB-g/p.png', lat: 52.5200, lng: 13.4050, width: '20%', height: '28%', top: '15%', left: '80%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACeSqh4NU-79lGL1CPP14zI0nQWCOjxJEbTIV71tJkUzA6zxycI_9K7Er6ZLt5uPfw7XYgj0Q_2-ntoQMLaiKiJq3Hq61LvPJARHX1rtAYMNF0IQU8FGlBs0DQYTf4ka1dFyVsK3KBQCQRTNxl94Vva5VxfvCJTqOoe_uzN3Dg6scR6nMnq4Wwr08UgKBD2XOvIpOMBhbneAMPlvWzztYhh_KLxWLkO-fsFuPZs9LkWHfQ0q16cPDMVoRs--UKVpXJhkdCLvsaWGcain8LAfgd9GCjC4XJ9ztCfaifvU1UdJaQ/p.png', lat: 55.7558, lng: 37.6173, width: '14%', height: '12%', top: '75%', left: '5%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACcQIpHT7shuxdRUer7SsVpyqlqfpS1AGcHThnY2DV5ZPKz0egvW7JXqJvO4EGnvdf2sPS5dCjLC5_UQZ6cMG0DjLE1tEltr4OZ-aQdn2qDpoiWNgeamVspXDX1NG_ZTZqEyGMG7oNyMuzWZdWHq48quhFUjadPnVEAoy25BhOx7ojybwtwkGL-or-zFmFxR12KZRPKqpWXHaa6gDlAC1YyyBXPltxUmgScOYBVz44KfZiaBwEH9Mfbmo95o7lpR2nXvjJr-5REFTH9bve_1L5yykcEzBfpNxyoNlKw3BR3P3Q/p.png', lat: 41.9028, lng: 12.4964, width: '30%', height: '90%', top: '40%', left: '55%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACdaH582ZipxKAteUXd32XU6GqKGunBQoPFuIUZN7usx1wwQNcaMr-S-hnevv70TtnSO91G-86T9QcyysFlHl-7dvYDhI0ffGN9nRuTmcXAXnpvxW6IFFHCZpb3etvG96iMiXJDJH9UNjGNY62F2G6fszUSmoNEWRIoDaJMXWAJ8KQmA53cjJ-CHFQdO73oe4hQxDOU0v74XQuAfbnAMv7MLRbaGnv_DWzkeoslY3rFZv0Z0XxJMhZrYEa8cNm_AxVHohDT8ILwTMurIn5eO5RbABuqwrPuKLunlnXqixzLajA/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' },
+
+        ];
+
+        function createCollage() {
+            const collageContainer = document.getElementById('collage');
+            images.forEach((image, index) => {
+                const img = document.createElement('img');
+                img.src = image.src;
+                img.classList.add('image-item');
+
+                // Make the 5th and 11th images sit side-by-side
+                if (index === 4) {
+                    img.style.marginRight = "0"; // Removes any extra margin on the 5th image
+                } else if (index === 10) {
+                    img.style.marginLeft = "-100%"; // Positions 11th image next to the 5th image
+                }
+
+                img.addEventListener('click', () => openMap(image.lat, image.lng));
+                collageContainer.appendChild(img);
+            });
+        }
+
+        let map;
+
+        function openMap(lat, lng) {
+            document.getElementById('mapModal').style.display = 'flex';
+            if (!map) {
+                map = L.map('map').setView([lat, lng], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 18,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+            } else {
+                map.setView([lat, lng], 13);
+            }
+        }
+
+        function closeMap() {
+            document.getElementById('mapModal').style.display = 'none';
+        }
+
+        window.onload = createCollage;
+    </script>
+
+</body>
+</html>
