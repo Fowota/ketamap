@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
-    <title>Image Collage with Leaflet Map</title>
+    <title>Keta Map</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
     <style>
         body, html {
@@ -11,20 +11,22 @@
             padding: 0;
             width: 100vw;
             height: 100vh;
-            overflow-x: auto;
+            overflow-x: hidden;
         }
         #collage {
             display: flex;
-            width: 200%; /* Adjust width as needed for all images */
+            flex-wrap: wrap;
+            width: 100vw;
             height: 100vh;
-            position: relative;
         }
         .image-item {
-            width: 18%; /* Adjust the size of the images */
-            height: 100%;
+            flex: 1 1 25%; /* Adjust this to set the number of images per row */
+            height: 50vh; /* Half of the viewport height */
             object-fit: cover;
+            position: relative;
             cursor: pointer;
         }
+        /* Overlay text on the first image */
         .image-item:first-child::after {
             content: "Hello";
             position: absolute;
@@ -73,9 +75,9 @@
 
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
     <script>
-        const images = [
+          const images = [
             { src: 'https://previews.dropbox.com/p/thumb/ACeXlLo-YWyyr5IUPbiap95Oxxt9McvXytwXqxrOqlsB4Wr98yxajuaz4N0BiCtMTcb1qSb3_wA4qAQ9XNWBs4AX2qZH9rB6Q2n-lS8nYC2SvudcmkhS4Z-Sq_JsVVVBnkYSXZABkBOyF7K8NR0_JaYK6zGyt11_2NgyqdTNnL-20r4oec3-KmW1dYIUrt1fhJnWMfqw4xa2LXyZpc-wCZ8z25ly9viZFwatv6SLtEAlvAlBdwsgZ4UTEHe-EFwxauG98VK1UkIjjFjEgJDtfWyNEXZUBCOYKoKjWw6UpZoHSg/p.png', lat: 5.9, lng: -0.9, width: '20%', height: '30%', top: '10%', left: '5%' }, //abobi
-            { src: 'https://previews.dropbox.com/p/thumb/ACdTvsLGzBLJm_giFOnw0yOMhaPPKkmmMlX8i5WV55Jd-TWuNO421tdSmGerZhT8ml3863fUV7YLqgxBUO3rnfj_2y7oskdnym-yzY83mkECRZbs2LuuI35KTfzLIAT8mDumhUPuJ0eBcJcNm5dEJvx57sgvInwYG_TxZZ1s-3Gk2RHdB0bv5w8rasIxka7v137xCEJpJ4NmJ0kEHNGuaHytAagfJ2W-v35Ys7RkeCAHZ8dHPMm1vSOz-MUKPFvFe-WgDTF-hE8_npfvYoXonNieHRWG7mdepxXCgLcpL_LBzg/p.png', lat: 40.7128, lng: -74.006, width: '25%', height: '35%', top: '20%', left: '30%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACdTvsLGzBLJm_giFOnw0yOMhaPPKkmmMlX8i5WV55Jd-TWuNO421tdSmGerZhT8ml3863fUV7YLqgxBUO3rnfj_2y7oskdnym-yzY83mkECRZbs2LuuI35KTfzLIAT8mDumhUPuJ0eBcJcNm5dEJvx57sgvInwYG_TxZZ1s-3Gk2RHdB0bv5w8rasIxka7v137xCEJpJ4NmJ0kEHNGuaHytAagfJ2W-v35Ys7RkeCAHZ8dHPMm1vSOz-MUKPFvFe-WgDTF-hE8_npfvYoXonNieHRWG7mdepxXCgLcpL_LBzg/p.png', lat: 40.7128, lng: -74.006, width: '25%', height: '35%', top: '100%', left: '30%' },
             { src: 'https://previews.dropbox.com/p/thumb/ACfPChKx-ZTKMh4pakvHMLvaZ5eLu0qzuDDUx6-ShiO2iuBl_VWW4ienfj6_sz18GfSsXBKw9areeR1OK3-M7QSOEZ8XHg0NgiVqXmpKeSjMJauvbkLudat3XSURBFMitl0VsoZo3FVnLKqi2Ehho9pDyrdOE0atl6XJVvDNLhXrn_bt7kQyNyRaX9RcFJr1RqPAGh41APN_nAmYoeKj9QA7r1NpbRzgmY2lyoFsDC5zkoAaXgignN2QijZL1FGuDY6YUNslKKMh5chT8Axhkzaa55Ljk3FyKEn1Ir14MSvEfg/p.png', lat: 48.8566, lng: 2.3522, width: '30%', height: '25%', top: '60%', left: '10%' },
             { src: 'https://previews.dropbox.com/p/thumb/ACe03e8t3HOuNy_ozalpnpUVoI2BQxXP5G3wRAC9AGQ4VuBRdcUe9cb9cF-gIi84vO70_YuE309lZGguHnXmVZrYeHS4PA5pt-KPjIAjRy6NUAzgGhdt9QK9iSpYLKPz6Sue1QmUaqIwKUJBmKkQaKCI5Lwo9himIcMYkNJHAroljG-vCAM1zKFSoUiHybarqGeElIT4Bad7M_mezYsd0RVAvaLPr508vCQCe2f9O7XChqH1oMz7G6xU9x46jBqN8IbfwearlDLXamPL6fP2tbYTWNKep-zkm4sJJ8UbyOiKQCAsR6hADwCoaMA6sNeCDsM/p.png', lat: 35.6762, lng: 139.6503, width: '15%', height: '25%', top: '5%', left: '60%' },
             { src: 'https://previews.dropbox.com/p/thumb/ACd3rLV5JCbYV2bv-Q8NzXMJCQ2xJ2JwhYchBOAsSDeLdy1nds2QWA9a9awfAXIYT8Fpwb2SmBrsRiB6j0vGiSkmHWjSohs65giB-k3BE3SuPhuJUyZcwkfTMyYklyTdlNYnVFtATlX3EygYA7BBdoZLMc_dgzMfbpZc7nB3gk-c8hD3fk-OekbmCsIdYja2jyLRmme05BT3_WY6nJZfp0mnW_3RBa1rfsAxYwTfYb8HtSPRcODrHsHOFOvsVAMfrjXjWjwVgBh19x1cxNq2EYWbuCi_Sue30esUAvHJd2S9qw/p.png', lat: -33.8688, lng: 151.2093, width: '18%', height: '28%', top: '35%', left: '15%' },
@@ -108,39 +110,31 @@
             { src: 'https://previews.dropbox.com/p/thumb/ACcGGJlXXfcweTsDoDwYqYpgliiaTrslnKVX7TVWcU57Y32rYIfRDYRxj4mEAkfqZze9EA-Xt524Jfr7w8ram8VAPcAdlOoI5A94ySe4TKMkejXEEAb9Gp5vCvw5zLzon5Lh8mUIehmwjYAwpfwvRQC7d-d9K6tfkjKITHvPxm_gbeMB5yfKK6Fk1LwBs9la5RAcAoCahiwMEL2OqdCe1uE4C6z_WPtQgFaZ8O7C9ZgULwyBTMJLYj8OJvXuualFSbUo1WyFAwZ7estqZvRkg7PLpGBSiGww1s7CRKvMlpkWlkOTAzmG15TIzEXPxvTLpuOwc9jwjyauhpJ5wJPQByMwNonl-K2FkB36-p_-S1qjNnSk8zsMBUcvGwp2CfYdOcrUwgceGJqkVgKVAMxhyhJ6An8dO2dQxzzSSf3u6H3eb8KCskg6K0VW3PTyZwa_hLj450apebkyUzNA2BTH0NcR/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //yevuxo
         ];
 
-        function createCollage() {
-            const collageContainer = document.getElementById('collage');
-            images.forEach((image, index) => {
-                const img = document.createElement('img');
-                img.src = image.src;
-                img.classList.add('image-item');
+        const collage = document.getElementById('collage');
 
-                img.addEventListener('click', () => openMap(image.lat, image.lng));
-                collageContainer.appendChild(img);
-            });
-        }
-
-        let map;
+        images.forEach((image, index) => {
+            const img = document.createElement('img');
+            img.src = image.src;
+            img.classList.add('image-item');
+            img.onclick = () => openMap(image.lat, image.lng);
+            collage.appendChild(img);
+        });
 
         function openMap(lat, lng) {
             document.getElementById('mapModal').style.display = 'flex';
-            if (!map) {
-                map = L.map('map').setView([lat, lng], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 18,
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
-            } else {
-                map.setView([lat, lng], 13);
-            }
+            const map = L.map('map').setView([lat, lng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            L.marker([lat, lng]).addTo(map);
         }
 
         function closeMap() {
             document.getElementById('mapModal').style.display = 'none';
+            const mapContainer = document.getElementById('map');
+            mapContainer.innerHTML = ""; // Clear map content
         }
-
-        window.onload = createCollage;
     </script>
-
 </body>
 </html>
