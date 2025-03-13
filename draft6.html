@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
+    <title>Keta Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow-x: hidden;
+        }
+        #collage {
+            display: flex;
+            flex-wrap: wrap;
+            width: 100vw;
+            height: 100vh;
+        }
+        .image-item {
+            flex: 1 1 25%; /* Adjust this to set the number of images per row */
+            height: 50vh; /* Half of the viewport height */
+            object-fit: cover;
+            position: relative;
+            cursor: pointer;
+        }
+        /* Overlay text on the first image */
+        .image-item:first-child::after {
+            content: "Hello";
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: black;
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            z-index: 9999;
+        }
+        #mapModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        #map {
+            width: 80%;
+            height: 80%;
+        }
+        .close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 30px;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="collage"></div>
+
+    <div id="mapModal">
+        <span class="close" onclick="closeMap()">×</span>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+          const images = [
+            { src: 'https://drive.google.com/file/d/1iqmCBymMf3Qbw15S_PpeLxVT3jSeQ71U/view?usp=drive_link', lat: 5.9, lng: -0.9, width: '20%', height: '30%', top: '10%', left: '5%' }, //abobi
+            { src: 'https://previews.dropbox.com/p/thumb/ACdTvsLGzBLJm_giFOnw0yOMhaPPKkmmMlX8i5WV55Jd-TWuNO421tdSmGerZhT8ml3863fUV7YLqgxBUO3rnfj_2y7oskdnym-yzY83mkECRZbs2LuuI35KTfzLIAT8mDumhUPuJ0eBcJcNm5dEJvx57sgvInwYG_TxZZ1s-3Gk2RHdB0bv5w8rasIxka7v137xCEJpJ4NmJ0kEHNGuaHytAagfJ2W-v35Ys7RkeCAHZ8dHPMm1vSOz-MUKPFvFe-WgDTF-hE8_npfvYoXonNieHRWG7mdepxXCgLcpL_LBzg/p.png', lat: 40.7128, lng: -74.006, width: '25%', height: '35%', top: '100%', left: '30%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACfPChKx-ZTKMh4pakvHMLvaZ5eLu0qzuDDUx6-ShiO2iuBl_VWW4ienfj6_sz18GfSsXBKw9areeR1OK3-M7QSOEZ8XHg0NgiVqXmpKeSjMJauvbkLudat3XSURBFMitl0VsoZo3FVnLKqi2Ehho9pDyrdOE0atl6XJVvDNLhXrn_bt7kQyNyRaX9RcFJr1RqPAGh41APN_nAmYoeKj9QA7r1NpbRzgmY2lyoFsDC5zkoAaXgignN2QijZL1FGuDY6YUNslKKMh5chT8Axhkzaa55Ljk3FyKEn1Ir14MSvEfg/p.png', lat: 48.8566, lng: 2.3522, width: '30%', height: '25%', top: '60%', left: '10%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACe03e8t3HOuNy_ozalpnpUVoI2BQxXP5G3wRAC9AGQ4VuBRdcUe9cb9cF-gIi84vO70_YuE309lZGguHnXmVZrYeHS4PA5pt-KPjIAjRy6NUAzgGhdt9QK9iSpYLKPz6Sue1QmUaqIwKUJBmKkQaKCI5Lwo9himIcMYkNJHAroljG-vCAM1zKFSoUiHybarqGeElIT4Bad7M_mezYsd0RVAvaLPr508vCQCe2f9O7XChqH1oMz7G6xU9x46jBqN8IbfwearlDLXamPL6fP2tbYTWNKep-zkm4sJJ8UbyOiKQCAsR6hADwCoaMA6sNeCDsM/p.png', lat: 35.6762, lng: 139.6503, width: '15%', height: '25%', top: '5%', left: '60%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACd3rLV5JCbYV2bv-Q8NzXMJCQ2xJ2JwhYchBOAsSDeLdy1nds2QWA9a9awfAXIYT8Fpwb2SmBrsRiB6j0vGiSkmHWjSohs65giB-k3BE3SuPhuJUyZcwkfTMyYklyTdlNYnVFtATlX3EygYA7BBdoZLMc_dgzMfbpZc7nB3gk-c8hD3fk-OekbmCsIdYja2jyLRmme05BT3_WY6nJZfp0mnW_3RBa1rfsAxYwTfYb8HtSPRcODrHsHOFOvsVAMfrjXjWjwVgBh19x1cxNq2EYWbuCi_Sue30esUAvHJd2S9qw/p.png', lat: -33.8688, lng: 151.2093, width: '18%', height: '28%', top: '35%', left: '15%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACeMPBxPqQFLCCo0z-C_SNkMczp67I6dze6XP75_TpOB9Mvio3NkR4ZmhsK0_U_By7AwS8mKvWavRaFt9DcU-xm81Q8bH_qXmqRyuOMzRPJOFxw0fcVpVyLhc2ArU0JSCFdcsfsjQtS54ejiGVegkhlG9rM5bW_i7OUt7_aJVJHV7C6qpWYlrh9sJ8ucxsjRapDQJaQuClgkyJH1aLD9E5cnhD7PTrVcdbtUetunljVHPOImAscCj4LKhm3DKCW10uxReLbfs_wbCBUQnMPo1va-gsJlct_N7EvK-BRSvgZB-g/p.png', lat: 52.5200, lng: 13.4050, width: '20%', height: '28%', top: '15%', left: '80%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACeSqh4NU-79lGL1CPP14zI0nQWCOjxJEbTIV71tJkUzA6zxycI_9K7Er6ZLt5uPfw7XYgj0Q_2-ntoQMLaiKiJq3Hq61LvPJARHX1rtAYMNF0IQU8FGlBs0DQYTf4ka1dFyVsK3KBQCQRTNxl94Vva5VxfvCJTqOoe_uzN3Dg6scR6nMnq4Wwr08UgKBD2XOvIpOMBhbneAMPlvWzztYhh_KLxWLkO-fsFuPZs9LkWHfQ0q16cPDMVoRs--UKVpXJhkdCLvsaWGcain8LAfgd9GCjC4XJ9ztCfaifvU1UdJaQ/p.png', lat: 55.7558, lng: 37.6173, width: '14%', height: '12%', top: '75%', left: '5%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACcQIpHT7shuxdRUer7SsVpyqlqfpS1AGcHThnY2DV5ZPKz0egvW7JXqJvO4EGnvdf2sPS5dCjLC5_UQZ6cMG0DjLE1tEltr4OZ-aQdn2qDpoiWNgeamVspXDX1NG_ZTZqEyGMG7oNyMuzWZdWHq48quhFUjadPnVEAoy25BhOx7ojybwtwkGL-or-zFmFxR12KZRPKqpWXHaa6gDlAC1YyyBXPltxUmgScOYBVz44KfZiaBwEH9Mfbmo95o7lpR2nXvjJr-5REFTH9bve_1L5yykcEzBfpNxyoNlKw3BR3P3Q/p.png', lat: 41.9028, lng: 12.4964, width: '30%', height: '90%', top: '40%', left: '55%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACcik_5Pv14Ka0uP5RvMt6VZ6Hk7m_mXpFLc3chtbCWdo6EIV-Q5rX9Zl7O4IX4Sl5DiAWetjKI4edHZyea_HZKrE69BZRAQzqveT23FBP2FlskKLDHDcCACWrXHFtJWlFgCumEDlQjpMkflg5piABKz1o6cHQM7RZRH8H6J9m9p8DmP253q1Z4jex5uJJJM_5xc0WVMIslgMoZXtay1uOGJKdHeGx6bJTgF9uEIl1LVyxsqWAZ9THz7EFobhlU0kDqtpQnrThzeOaP2Zl4gSwwJAiKzpaTxWd0BgrnEzQ-dJQ/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //akpawo
+            { src: 'https://previews.dropbox.com/p/thumb/ACdo0hpj1osNfpxIaI7B9A2983nqItt091W8QezvKKsyqiuy_Elm1QoeC-bXh6h9CQQTrrMPgQbM2eR_UdHg3a7CzwnCMEYYDqbFJot4jDaI1c6Pe7Gn8ac-Yv1oXFi5kOH0hgWblUYOyKaNdNzwYd85V7t4cMTenDZaFB3L2xSivKEkcj3ZxicwskaxWeruxHqc_6JM7pLAAtyZlpi0G1es4c4sMMusyuWLWTcKDCyl1aFvFbt2NrbhekknHd5k0keMNwBsqYWR9v2iq7pyzH2nzHpOGcIYO-cSJtphqQ0S2A/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACda2vMAcc0htHRT40dsUccAtr_oC5Gr7FFapoCR5bB0fiGjkwT4bKuwAQFpwV-fJj9DEj6SEDbVwApN94GDXDttB8Lm0m5Ou5hlZiLJfBrJueqfdYCeIA3N80n7k8tQu9DXlH0Qlg7LcY_cjWoKQvlS6GHjpd6_x5qxkPHMa6hz1U3CrkuumL2oGRJH-GDXHhvq-c5G9HwZJoQig11OJNuKHJ-961GHXZKzlIxtcA2O37WsEsbNxa7olzZdU2ILg_N--CmVb93yBexL3mpeIrzM6tZUw4Q0zGamb5Oi6F7OSg/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACe0Lr31Ctlz1rWAa2yRkOX1eV2YtGDnIoRxyvg9vvmXMucgscShOPWOvrFf8SyXJwvhH1cvhsqShfe9wgi9p0jU74sXK9dNQFwQ6SxKvLqKgDLIAwajcDeK0kKIrcnMDLXWvmIK_zulA5DrymLcDNkqx39gQ52LVm3hdVMMO5JxUJGJCnvPESFVBJgj6gpTHAt0QhDvYol1UzkVexRVvrVENg_aa77iDTtva0Yl1AW1cL7Wkp-6Y67kiUCJEKd0a2dzf3Z-Ctdu04BA3wLqn8ZJrUmqRdYMr3BBd5SbD0xCog/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACfPmC7c6PhI8jKloLqdtO6Pi8nrdgG39FUzmHDR-2UIFkfLf-8aexo6ZDrx2j5x9C3bedKTnokw-A5CnEWUT4vBXMIk_lGEv9h2FrvHsIqO3smnLhHF0cIHC2yoahUx7bYJVqdFplW-0kkDGkQhagvJtnEAcMRLgEFSZYssDBLkScSX8Ady03Vdv36xNjy4HD2Ax6ghMdpAEvVhX6tzAnlNoCTNIHH7Q82uhnvXZBSIauJ0-HGgQg9rBPKLkQJB97rXDJboLfYmWlKEeslksXu9GrdkSUWAIBNNu46SmY73aA/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' },
+            { src: 'https://previews.dropbox.com/p/thumb/ACeQkfFQ10SBP2jk4BURNTuYNo4NFjGFeyqQNvegIZc2Fef0xCVMrdu8OHe1ASD-bL7ms2_9q7a5VQ2BVUL3IaYi5r8FWb_SqgWSLrBxem4y6ahB1XSQ7D9uae2dahq3OUPB9DSRrXuFvpv-7xtHMoxDQ2M0mQEqE-JRisFcJxGfvd4yKI1XPuvQsGbDgG9ZduXztDsZ3wW0ism8NnCQdNqBP1jhpiPKAS-rqKqmGNsq1Zsqc08BG3u2OlhXtB1etWBGvKxvrqtY-SU0JEVGkQTvoGkPPeX3R1WahVknWT4Qhw/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //bendua
+            { src: 'https://previews.dropbox.com/p/thumb/ACdDokDnQ6o8PmaXRQVgolt2X1bLc6aBvGFPT0mqRzxCaRFqmtDvNUipaxSKMOEItyQXRrHHQGFvv8qslpvIX1LZP9IrOalk6zQ780Z5pD42sKRYKK6kh5Q5Obiau7C4a8YJKbAi2pDBjMTVO-ZwMnqIo-9dZS_3bpTD2bnuRTlPlr2PUHp1OM_ONlNr2O_f2CYQc0EH3RF_Y8EDgixvD2FrK6xp6fF_I-Bna8pTc9i5hGMUDn9W-BSATtwMFVAcqG6eL-FGyLwrlvpjFXgxUMhluYxPt65ghRtBElao_F_9dQ/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //deti
+            { src: 'https://previews.dropbox.com/p/thumb/ACfy4u5nKiFRyUa5WfCZSxzMA2zqk0DSSmcqoPiBn9QIdE0smhOnDA_B9zTR897uuMyiUA2H3pGe5cLEqzzpHRoRBohaeDUzBWdLRBQz6LqsKND9UQQpG12dgVzpTpvGFnyZHMRRC_H6pQM1d2ndBeg5BsydBrgIJ22mMttSzMwwRF1XOZcaxAsd3KEMBp6t_lK6mIFmN4iarI9-5QPrbFBt7KM6ctNzq9gACYW8JKxuiKMTku9jvrLOzrdAZtbE_73Sr3-u_CwSuM7d2fdvkIB3rncZc_mnrddnCBeOXzrEzg/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //dosiata
+            { src: 'https://previews.dropbox.com/p/thumb/ACd3EfHIHNBZNR9s9kL3WPFSucgVZ88oA6cuSnZoB_rESvWxkQHLu0itE6s3pjjzrYjXNMQ_E1iwoxd7GkrybOl7YGoLbOCxmm_nzFs9zi_EM9eyNolkCUb9ZRnBYnhFhZJn2ii5MTRnf9Cf9CA8MyTy2bnaTz8FLwE9QBKUb4pr9R780kwVBvP_qkcRMj8SPQ7nsBZ0aevh3WzkLK167zX12zuaYrC0wgdcgWuUf1uCEDAQ2kt4QMjg42ZlM-XIxWRclSmd8exjTpT4b-33PaJRk72rP1ZYHUeGdqUd5qr-QQ/p.png', lat: .9937, lng: 5.925, width: '20%', height: '80%', top: '40%', left: '95%' }, //ene
+            { src: 'https://previews.dropbox.com/p/thumb/ACf3EHB403_9-jbPr71ukglkdxug2xgSa6EPueRzP_wz_aLC674bzisFMZsrlPGQEV9gZeHNxqs7LbLGRQItJq8TSil-C17J-JvMK3Ghi1x-q0pGib16ypCW58_nfP9lbIcNGlA2fi6u7puOOQq-z-l3keRR7ZbreoMAtngETXaYavcCsjdZ1ZgEQ5Ik42O6fPrN-l_8I0usPNFWTO9AZkznNh20VEh7WlLLHGuB0w0FSVAquHRnZHlo8MdwwqKaNkkuKyPY5hWESrzJvUvV77zxCtHe4YdnP119_M54Cj0qYUr8Fgf5c_D8qxAoSw67kHY/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //etrega
+            { src: 'https://previews.dropbox.com/p/thumb/ACcUJXulg8Nuv_rI-UeQb6_z5BdI5SM1OwZDrbX_HwMol472sBI2dU5Qx3aknbCAkSKnz839l2-Ftg-A4PxhlrM8iMbyJtQIrNattSWZ1u3JkZ-AUqOeGlxH3HdC6YChWDPrPRawXQLVVUatE6dcLRGFWSDcdJ9nuNlc8SXuH2y1fmrWcwPCrfAUoLyOBHhfjXfaGkRPo7Qzfw6oBCTn3_ibQVnIgDD58q36q3D_TrxWokZcVR8-E2325Sb3kGan-OwVTRYJ9DxEY-cv0Vm06-pW7kWUo2y1eaqmpUdsuTFS2w/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //fo
+            { src: 'https://previews.dropbox.com/p/thumb/ACer7TQHMSXKHUZ5FWb16io6DjRz152oIPqrYYq1kkDtM61lK8p_Lfh6vFptekZvrLOYyseMLNgmOuVJPvsMiAb8RlesDU3YFxZII1TsXAEhM5IgrDiOpPW5LQND-kLUzrv9BvDlbiAH6lUmRvQ77ujKecQUc-uH8W8QdXUh0kO_GPc9bPGxAtrtKLcU7r_Q4eMdFOuBqyNJWjT878WtwnwJKPb5bz2OlG8x2Ocd3h_119Hmc8Gkt1jQBvIqhFmZEIGO5_lctMA2N9zcJOt5azFQZI7SAVR8whwgrZa4w5GhQQ/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //gboti
+            { src: 'https://previews.dropbox.com/p/thumb/ACc5Y3zgmN_0KJsTDZvN1VEIf66b10E6XiNqgxCptGB5_QVZei_qltPs4Ti9ZV_wJ9fkoJkTPUotdE0USvbah8YROHDg3uLyxGeChAk6DBV9DWo9pTrpz246Ial1m4R91vMmjjnwK1GeLzxlwK6cTMZIRu3NBan_YqePa3__CacQ7Hgy3h0Tms38o4UOEOGEOXmHuH323tHQXL0tR5quYVHKHJ1tPpXWn_H4z6eHU4dozo_stChmvOKT3MmylZwNTVjqWnwcMXuC9H_Wi2nHTkQjy3U0-8I963uRFmnVqmntoQ/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //gododofe
+            { src: 'https://previews.dropbox.com/p/thumb/ACfQL5JNtPeNc04JjKKnX6TGJwXsspjxu2VTRdva94MqE2XwpNOeT5sekljq9X8_L28g7IJpV2VKKKT1TdXiZcwCrpaqvea0kZaBAT16efsAoAF5Of54eOs6cYwUBxesCBx_1P9iQ-Y6ohUbvIukYWYz1OoAiKz8eI0DDSW8odUcTz71a-ncEYCs54E6JaCMKHX3ifoKDn0APTQdCT4svQdEsQHIvtH_fo0lUQ7BAjl9K5xu1E3ZK6xbR7t5gGqa7QffYyZgZVXuKvAI1gIUH_lbDChYPTcNtBMwxNL1er5fuA/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //kevi
+            { src: 'https://previews.dropbox.com/p/thumb/ACe2Sq9UKkmf4ZMaaeUekB71iBg3a44iX3aFZdGVzJ_JxW6xkBfIj9iF7uHpZn9PSYpNZRSFyfeFWJzzRrXp6tcnNTN-HXCMDuqA_3_ALKDhbDoxeeRR-65XujwdPoKnwW8rx_giNVrd-Ec-wXm7Ot447EjEkAmjKGkrme7t-WWQhHS4-WyWKpgF0vk9VJJFzBjx6lyHtgXgxTBwxY68WSZ1zDQzhMFDSBK6qD7hi4X2XfnaovG6_nuQHq2XmxsC8DEZ0i6a5MZfspfRwkCYZ71FulumnEPhYl1AiPKndQh-Yw/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //kpaku
+            { src: 'https://previews.dropbox.com/p/thumb/ACdJ3_GWGvs5jRI1bD5QSO1vmN1zOFVF4uIzyaM3mGuYFRylWsFm_MtUkwV3f6KikIMTt_t-lkPW6FHzjDH23Gy4FybbvBFUafRSUS39Yh-NmmFtlHWrjawOP7UQSGJHsvnJ-B2yWiYwr9u7RQoXvfSEcQH9w_1KDxe_pNC6gN-dAMnmLKX3a4sGCo3aMR0fO_sIuwiXMmZw7WxDsrRtbg0_X5xWUROK8ykpnQewtdHOxygfCVRhBJTrJk10WpMyJsF4AzcLzSp0G6gAIWpDgJjIbqyf_dDnlG73v6HSAa07NQ/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //kpe
+            { src: 'https://previews.dropbox.com/p/thumb/ACdg37nCnu9P7F_8hWnixD0qfp4pE0NmdLX4RA9R9iuTfvmRaGtPHpaY_Mg3zaChSREylQqYBplX1TEi-kjiivynpxOxUjAoclrwhWXT-wID0V4sshRnbGkd2Dzxzd7FQQtXMPpPPYcKEd3ZHGH5maKOXtJ51gf8HKdVMQPtI2-YJFfhS94jWeCr7ybywh8Z7wM6CM__fPHEH7pJI0RYFXJBbpqTzhnRPv0X8SQk4l140NKk8w8A26CV-o941V8c0Q7ZfEWCBdfzVRb9D4Ccgza9fPafHptpMY8ImyDM2tMJug/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //kpo
+            { src: 'https://previews.dropbox.com/p/thumb/ACef0doWj8ljR4C0_K6Oo0EwUudoY6u4Fm0qKmKV5Qn7NJP2qzyxRf3pKEkJO6OrjIkSMrQ-zXtcVTEJi48IQjiCIJWP4nC39FH95bgA8hbUnAsYn4pqFz6pm4YBXcZfQh80djIbYxI4HC_JJW1XYAk5zDW31AV-L47zitaeZ5m8KivYcBqmm8Yo62lukCSPzs7FV4ADEKX6yiZFjAKvXvtzGnCHWHrnvfmGDu3jEjvzL41B7GDxyD2VKAI8fKMTot3PJW8qKAiD-2iWhdUP0GouKSkkViRguMDQ5QnWf2EhSA/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //pamplo
+            { src: 'https://previews.dropbox.com/p/thumb/ACeV6cCagKQMIiUVsaxSu0My3AVHHYzsWsF4FOwNoJoJ7qhl9rrZbJdAJxjB8J7RKrHNfe6Yk61i4OHCsmHINI5KfB1hG19zUVA-G2V1RBU7uFwu2C1WSCg0fM6nlF9VKVxxaM0qaFJPYRIq4yBZZCgoUNeoOlqwHYYIJafAQnKtcRZAijVUMWy5YMvt7myuJm2tvXpOVQlOZN7bNCh_uISrs7GnX4_mZbOiHBH4bnlaO8uh0StRbs11z-CT6vQZq5ILMDO_Q766vo-yGTBp3VeurcPo3s2UH4CKmJKlCNPu1Q/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //sabala
+            { src: 'https://previews.dropbox.com/p/thumb/ACeGoZeINVimo28bmlKtjGrJfLmxA9dNIGzKYyaU6IjqtYPr_tcgwJjdne6jljGrTXoyrVX-dPsafAuTpR67Rm_RdhGFlZRy-zcg5rsAVY70JmancmFnf6UtOKVb-AAgmYmjP-_gPLeG3-suhFwl15XR121jfSor6IoDZFe5CxLCUlCdS_bwp7oFkIfvnHOieK20Rxfa7B3UAUhRRpVQ0fuPqvmoAPQhP5TqsGz92Su4Rrn-5vTrLyg_sa-d3OL6sQxUYYQHnM9pKn97yuDtfsLJVL3A4OJ6ocpYT0xDY86eOw/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //seke
+            { src: 'https://previews.dropbox.com/p/thumb/ACf6MElkMhkRF3TipAWQtayOBjMl6k4BISDFaf1wvI3yHdfGu4XmWTtB0W-yLRi6okbO5oBhibpfbr7b7X1E_Ewc2q-32XrzGGh_03-7KQtHKHwxGW7Mud007tyYDgsPVu-MnujdZmpIsI-HuPqzCLFE2FoJ25UmYg30iryu4uMc_5n6e4p2j2dJ_FTaKW9S2SSeP3KPKWEPGMWFfq4qQqqoo8tCxdsaBBLZbd5HR_tUG0TT9r7tIj3yLaHlbNpBFfZOOyZTyrO4MCC9vyGYJE1-_11q5i6EUtw4H6Uswhn-lsSglchirLvwx8Yn2J8bM_A/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //todzizozo
+            { src: 'https://previews.dropbox.com/p/thumb/ACduDJhEx2XvLPtrsFcJVFH2gYN4H7ZvAn5zqUrOdZ1U7bZ_T051B0ZGPgKvQ11PvqGkkCQeJKLugrKWzbavz3m7lIvmn8HkBQwgDpdJVEWqZiN3pcjS0I2I4k60Irhn5QUU69WBqqokbS_0wb4fatevIDZCUIROkhzG3y5YDFZG7HiINnGWLjiDQW3PWrH2tyu-advCfh4BBc789ZsU2hGYzFllmJS2wmzk8P539oGCZ4A4xpcam-84YdURb5nShJ40tLVBXiNaVCONsByzjdyATAg6IlP_FIt7zE7IdQ0_zw/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //tsife
+            { src: 'https://previews.dropbox.com/p/thumb/ACdbFX3Iz91e81AJLjUrm5vo0g8RRsGzZfGEd27ASwVl1Bz533I2xjUwiAzWMqfH9VMUZCCaPiNi2xAuFpkhyxBQLxKJdylYB3NbkzB3Lraj6a9haCpSi2_5tJb9r0-bKH-TpgCpE0rHa0mgEqDmo7-8XtHKmQa2TBjrvGBZm_ouhMu6qGWFoejFtH3UBFnSbvzffJ7bLZavvLXp88xpdMcHRkm5C2yQ4I_edmrJotNCiML7wXktgDM1p3KNx0eO1t9ftT9whcy6OwFlJck_zZziYP_Dnjcf1cETYUi-r_-rhQ/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //vudo
+            { src: 'https://previews.dropbox.com/p/thumb/ACcGGJlXXfcweTsDoDwYqYpgliiaTrslnKVX7TVWcU57Y32rYIfRDYRxj4mEAkfqZze9EA-Xt524Jfr7w8ram8VAPcAdlOoI5A94ySe4TKMkejXEEAb9Gp5vCvw5zLzon5Lh8mUIehmwjYAwpfwvRQC7d-d9K6tfkjKITHvPxm_gbeMB5yfKK6Fk1LwBs9la5RAcAoCahiwMEL2OqdCe1uE4C6z_WPtQgFaZ8O7C9ZgULwyBTMJLYj8OJvXuualFSbUo1WyFAwZ7estqZvRkg7PLpGBSiGww1s7CRKvMlpkWlkOTAzmG15TIzEXPxvTLpuOwc9jwjyauhpJ5wJPQByMwNonl-K2FkB36-p_-S1qjNnSk8zsMBUcvGwp2CfYdOcrUwgceGJqkVgKVAMxhyhJ6An8dO2dQxzzSSf3u6H3eb8KCskg6K0VW3PTyZwa_hLj450apebkyUzNA2BTH0NcR/p.png', lat: .9937, lng: 5.925, width: '30%', height: '80%', top: '40%', left: '95%' }, //yevuxo
+        ];
+
+        const collage = document.getElementById('collage');
+
+        images.forEach((image, index) => {
+            const img = document.createElement('img');
+            img.src = image.src;
+            img.classList.add('image-item');
+            img.onclick = () => openMap(image.lat, image.lng);
+            collage.appendChild(img);
+        });
+
+        function openMap(lat, lng) {
+            document.getElementById('mapModal').style.display = 'flex';
+            const map = L.map('map').setView([lat, lng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            L.marker([lat, lng]).addTo(map);
+        }
+
+        function closeMap() {
+            document.getElementById('mapModal').style.display = 'none';
+            const mapContainer = document.getElementById('map');
+            mapContainer.innerHTML = ""; // Clear map content
+        }
+    </script>
+</body>
+</html>
